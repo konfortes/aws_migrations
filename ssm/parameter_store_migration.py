@@ -1,15 +1,13 @@
 import sys
 import boto3
 
-from_region, to_region, from_stage, to_stage = sys.argv[1:]
 
-
-def put_parameters(region: str, parameters, from_stage: str, to_stage: str):
+def put_parameters(region: str, parameters, from_path: str, to_path: str):
     ssm = boto3.client("ssm", region_name=region)
     for parameter in parameters["Parameters"]:
         try:
             ssm.put_parameter(
-                Name=parameter["Name"].replace(from_stage, to_stage),
+                Name=parameter["Name"].replace(from_path, to_path),
                 Value=parameter["Value"],
                 Type=parameter["Type"],
                 Overwrite=True,
@@ -26,11 +24,14 @@ def get_parameters_by_path(region: str, path: str, next_token: str = None):
     return ssm.get_parameters_by_path(**params)
 
 
-parameters = get_parameters_by_path(from_region, f"/{from_stage}", None)
-put_parameters(to_region, parameters, from_stage, to_stage)
+if __name__ == "__main__":
+    from_region, to_region, from_path, to_path = sys.argv[1:]
 
-while "NextToken" in parameters:
-    parameters = get_parameters_by_path(
-        from_region, f"/{from_stage}", parameters["NextToken"]
-    )
-    put_parameters(to_region, parameters, from_stage, to_stage)
+    parameters = get_parameters_by_path(from_region, f"/{from_path}", None)
+    put_parameters(to_region, parameters, from_path, to_path)
+
+    while "NextToken" in parameters:
+        parameters = get_parameters_by_path(
+            from_region, f"/{from_path}", parameters["NextToken"]
+        )
+        put_parameters(to_region, parameters, from_path, to_path)
